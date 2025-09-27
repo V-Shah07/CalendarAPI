@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import pytz  # You'll need to install this: pip install pytz
 
-
 def find_events_by_date(service, date_str: str) -> Dict[str, Any]:
     """
     Find all events on a specific date across all calendars
@@ -20,22 +19,28 @@ def find_events_by_date(service, date_str: str) -> Dict[str, Any]:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
         print(f"Parsed target date: {target_date}")
         
-        # Use UTC timezone for consistency
-        utc = pytz.UTC
+        # Use your local timezone instead of UTC
+        local_tz = pytz.timezone('US/Eastern')  # Change this to your timezone
         
-        # Calculate time bounds for the day (start and end of day in UTC)
+        # Calculate time bounds for the day in LOCAL timezone
         start_datetime = datetime.combine(target_date, datetime.min.time())
         end_datetime = datetime.combine(target_date, datetime.max.time())
         
-        # Convert to UTC
-        start_datetime_utc = utc.localize(start_datetime)
-        end_datetime_utc = utc.localize(end_datetime)
+        # Convert to local timezone first, then to UTC
+        start_datetime_local = local_tz.localize(start_datetime)
+        end_datetime_local = local_tz.localize(end_datetime)
+        
+        # Convert to UTC for the API call
+        start_datetime_utc = start_datetime_local.astimezone(pytz.UTC)
+        end_datetime_utc = end_datetime_local.astimezone(pytz.UTC)
         
         # Convert to RFC3339 format for Google Calendar API
         start_time = start_datetime_utc.isoformat()
         end_time = end_datetime_utc.isoformat()
         
-        print(f"Searching for events between {start_time} and {end_time}")
+        print(f"Local timezone: {local_tz}")
+        print(f"Local time range: {start_datetime_local} to {end_datetime_local}")
+        print(f"UTC time range: {start_time} to {end_time}")
         
         # Get list of all calendars
         calendar_list = service.calendarList().list().execute()
@@ -86,13 +91,19 @@ def find_events_by_date(service, date_str: str) -> Dict[str, Any]:
                         
                         # Parse and format times
                         try:
+                            # Parse the event time
                             start_dt = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
                             end_dt = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
                             
-                            # Format times for display
-                            start_display = start_dt.strftime('%I:%M %p')
-                            end_display = end_dt.strftime('%I:%M %p')
+                            # Convert to local timezone for display
+                            start_dt_local = start_dt.astimezone(local_tz)
+                            end_dt_local = end_dt.astimezone(local_tz)
                             
+                            # Format times for display
+                            start_display = start_dt_local.strftime('%I:%M %p')
+                            end_display = end_dt_local.strftime('%I:%M %p')
+                            
+                            print(f"  Event in local time: {start_dt_local} to {end_dt_local}")
                             print(f"  Formatted times: {start_display} to {end_display}")
                             
                         except Exception as time_error:
@@ -147,7 +158,8 @@ def find_events_by_date(service, date_str: str) -> Dict[str, Any]:
             'search_params': {
                 'start_time': start_time,
                 'end_time': end_time,
-                'calendars_searched': len(calendars)
+                'calendars_searched': len(calendars),
+                'timezone_used': str(local_tz)
             }
         }
         
