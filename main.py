@@ -152,22 +152,20 @@ async def move_event_endpoint(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/event/find")
-async def find_event_endpoint(
-    request: FindEventRequest,
+@app.post("/events/find")
+async def find_events_endpoint(
+    request: FindEventsRequest,
     service = Depends(get_calendar_service)
 ):
-    """Find an event by title and time"""
+    """Find all events on a specific date across all calendars"""
     try:
-        result = find_event_by_title_and_time(
-            service,
-            request.title,
-            request.start_datetime,
-            request.calendar_id
-        )
+        result = find_events_by_date(service, request.date)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
     
 @app.post("/events/find")
 async def find_events_endpoint(
