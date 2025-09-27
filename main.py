@@ -14,6 +14,7 @@ import logging
 from createEvent import add_event
 from createCalendar import create_calendar  
 from moveEvent import move_event_by_title, find_event_by_title_and_time
+from findEvents import find_events_by_date
 
 # Create security scheme
 security = HTTPBearer()
@@ -52,6 +53,9 @@ class FindEventRequest(BaseModel):
     title: str
     start_datetime: str
     calendar_id: Optional[str] = 'primary'
+
+class FindEventsRequest(BaseModel):
+    date: str  # YYYY-MM-DD format
 
 # Modified authentication function for mobile tokens
 def authenticate_with_token(access_token: str):
@@ -164,6 +168,21 @@ async def find_event_endpoint(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/events/find")
+async def find_events_endpoint(
+    request: FindEventsRequest,
+    service = Depends(get_calendar_service)
+):
+    """Find all events on a specific date across all calendars"""
+    try:
+        result = find_events_by_date(service, request.date)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
