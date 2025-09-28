@@ -15,6 +15,7 @@ from createEvent import add_event
 from createCalendar import create_calendar  
 from moveEvent import move_event_by_title, find_event_by_title_and_time
 from findEvents import find_events_by_date
+from delete import delete_event_by_title
 
 # Create security scheme
 security = HTTPBearer()
@@ -30,11 +31,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+#All times shoudl be in this type of format: #ex: '2024-01-15T09:00:00'
+
 # Pydantic models for request/response
 class CreateEventRequest(BaseModel):
     title: str
-    start_datetime: str
-    end_datetime: str
+    start_datetime: str #ex: '2024-01-15T09:00:00'
+    end_datetime: str  #ex: '2024-01-15T09:00:00' 
     description: Optional[str] = ""
     calendar_id: Optional[str] = 'primary'
 
@@ -56,6 +59,11 @@ class FindEventRequest(BaseModel):
 
 class FindEventsRequest(BaseModel):
     date: str  # YYYY-MM-DD format
+
+class DeleteEventRequest(BaseModel):
+    title: str
+    start_datetime: str
+    calendar_id: Optional[str] = 'primary'
 
 # Modified authentication function for mobile tokens
 def authenticate_with_token(access_token: str):
@@ -152,21 +160,23 @@ async def move_event_endpoint(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/events/find")
-async def find_events_endpoint(
-    request: FindEventsRequest,
+@app.post("/event/delete")
+async def delete_event_endpoint(
+    request: DeleteEventRequest,
     service = Depends(get_calendar_service)
 ):
-    """Find all events on a specific date across all calendars"""
+    """Delete an existing event"""
     try:
-        result = find_events_by_date(service, request.date)
+        result = delete_event_by_title(
+            service,
+            request.title,
+            request.start_datetime,
+            request.calendar_id
+        )
         return result
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    
 @app.post("/events/find")
 async def find_events_endpoint(
     request: FindEventsRequest,
